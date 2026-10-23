@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Lobo Electricals - Worker & Salary Manager</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1e3a8a" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Worker Manager" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <link rel="icon" type="image/png" href="icon-192.png" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header class="app-header">
+    <div class="logo-area">
+      <span class="logo-icon">⚡</span>
+      <div>
+        <h1>Lobo Electricals</h1>
+        <small id="today-date-display" class="subtext"></small>
+      </div>
+    </div>
+
+    <div class="header-controls">
+      <select id="business-filter" onchange="switchBusiness(this.value)">
+        <!-- Populated via JS -->
+      </select>
+      <button class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.85rem;" onclick="downloadBackup()" title="Download Backup">💾 Backup</button>
+      <label class="btn btn-secondary" style="padding: 8px 12px; font-size: 0.85rem; cursor: pointer;" title="Restore Backup">
+        📥 Restore
+        <input type="file" id="restore-input" accept=".json" style="display:none;" onchange="restoreBackup(event)" />
+      </label>
+      <button class="btn btn-primary" onclick="showSection('attendance')">⚡ Take Attendance</button>
+    </div>
+  </header>
+
+  <div class="app-layout">
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar">
+      <button class="nav-item active" onclick="showSection('dashboard', this)">
+        <span class="icon">🏠</span><span>Home</span>
+      </button>
+      <button class="nav-item" onclick="showSection('attendance', this)">
+        <span class="icon">📅</span><span>Attend</span>
+      </button>
+      <button class="nav-item" onclick="showSection('workers', this)">
+        <span class="icon">👷</span><span>Workers</span>
+      </button>
+      <button class="nav-item" onclick="showSection('payroll', this)">
+        <span class="icon">💰</span><span>Weekly Pay</span>
+      </button>
+      <button class="nav-item" onclick="showSection('notes', this)">
+        <span class="icon">📝</span><span>Notes</span>
+      </button>
+    </nav>
+
+    <!-- Main Content Viewport -->
+    <main class="content-area">
+
+      <!-- 1. DASHBOARD -->
+      <section id="sec-dashboard" class="content-view">
+        <div class="stats-row">
+          <div class="stat-card">
+            <h3>Total Workers</h3>
+            <p class="stat-num" id="stat-total-workers">0</p>
+          </div>
+          <div class="stat-card card-green">
+            <h3>Present Today</h3>
+            <p class="stat-num" id="stat-today-present" style="color: #10b981;">0</p>
+          </div>
+          <div class="stat-card card-red">
+            <h3>Absent Today</h3>
+            <p class="stat-num" id="stat-today-absent" style="color: #ef4444;">0</p>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Quick Actions</h2>
+          <div class="action-grid">
+            <button class="big-btn" onclick="showSection('attendance')">📅 Mark Today's Attendance</button>
+            <button class="big-btn" onclick="openAddWorkerModal()">➕ Add New Worker</button>
+            <button class="big-btn" onclick="showSection('payroll')">💰 Weekly Pay & Settlements</button>
+            <button class="big-btn" onclick="showSection('notes')">📝 Site & Business Notes</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. ATTENDANCE -->
+      <section id="sec-attendance" class="content-view hidden">
+        <div class="panel-header">
+          <div>
+            <h2>Daily Attendance Sheet</h2>
+            <p class="subtext">Set site location, adjust wage if needed, and toggle Present or Absent.</p>
+          </div>
+          <div class="row-actions">
+            <input type="date" id="attendance-date" onchange="renderAttendanceSheet()" />
+            <button class="btn btn-success" onclick="markAllPresent()">✅ Mark All Present</button>
+            <button class="btn btn-primary" onclick="saveAttendance()">💾 Save</button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Worker Name</th>
+                <th>Work Location / Site</th>
+                <th>Today's Wage (₹)</th>
+                <th>Status (Tap to Change)</th>
+              </tr>
+            </thead>
+            <tbody id="attendance-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 3. WORKERS -->
+      <section id="sec-workers" class="content-view hidden">
+        <div class="panel-header">
+          <h2>Workers List</h2>
+          <button class="btn btn-primary" onclick="openAddWorkerModal()">➕ Add Worker</button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Full Name</th>
+                <th>Phone Number</th>
+                <th>Work Type / Business</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="workers-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 4. WEEKLY PAYROLL & TOTAL SPENT -->
+      <section id="sec-payroll" class="content-view hidden">
+        <div class="panel-header">
+          <div>
+            <h2>Weekly Salary Settlement</h2>
+            <p class="subtext">Use the arrows to switch weeks, mark payments, or clear settled statuses.</p>
+          </div>
+          <div class="row-actions">
+            <button class="btn btn-secondary" onclick="navigateWeek(-1)">◀ Previous Week</button>
+            <input type="date" id="payroll-week-date" onchange="calculateWeeklyPayroll()" />
+            <button class="btn btn-secondary" onclick="navigateWeek(1)">Next Week ▶</button>
+            <button class="btn btn-danger" style="padding: 8px 14px; font-size: 0.85rem;" onclick="clearAllWeekPayments()">🔄 Reset All to Unpaid</button>
+          </div>
+        </div>
+
+        <!-- Weekly Total Spending Summary Cards -->
+        <div class="stats-row" style="margin-bottom: 16px;">
+          <div class="stat-card" style="border-left-color: #2563eb;">
+            <h3>Total Weekly Bill</h3>
+            <p class="stat-num" id="week-total-bill" style="color: #1e3a8a;">₹0</p>
+          </div>
+          <div class="stat-card card-green">
+            <h3>Total Dad Paid Out</h3>
+            <p class="stat-num" id="week-total-paid" style="color: #15803d;">₹0</p>
+          </div>
+          <div class="stat-card card-red">
+            <h3>Remaining Pending</h3>
+            <p class="stat-num" id="week-total-pending" style="color: #b91c1c;">₹0</p>
+          </div>
+        </div>
+
+        <div style="background: #e2e8f0; padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; font-weight: 600;" id="week-range-banner"></div>
+
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Worker</th>
+                <th>Work Done This Week (Locations & Days)</th>
+                <th>Total Days</th>
+                <th>Total Earned (₹)</th>
+                <th>Payment Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="payroll-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 5. NOTES -->
+      <section id="sec-notes" class="content-view hidden">
+        <div class="panel-header">
+          <div>
+            <h2>Site & Business Notes</h2>
+            <p class="subtext">Jot down material lists, site instructions, pending customer payments, or reminders.</p>
+          </div>
+          <button class="btn btn-primary" onclick="openNoteModal()">➕ Add Note</button>
+        </div>
+
+        <div id="notes-grid" class="notes-grid-container">
+          <!-- Populated via JS -->
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- ADD WORKER MODAL -->
+  <div id="worker-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Add New Worker</h3>
+        <button class="close-btn" onclick="closeAddWorkerModal()">&times;</button>
+      </div>
+      <form id="worker-form" onsubmit="handleSaveWorker(event)">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="w-name" placeholder="e.g. Ramesh" required />
+        </div>
+        <div class="form-group">
+          <label>Phone Number</label>
+          <input type="tel" id="w-phone" placeholder="e.g. 9876543210" />
+        </div>
+        <div class="form-group">
+          <label>Work Type / Category</label>
+          <input type="text" id="w-business" placeholder="e.g. Lobo Electricals, Contract Site" required />
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Save Worker</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ADD NOTE MODAL -->
+  <div id="note-modal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="note-modal-title">New Note</h3>
+        <button class="close-btn" onclick="closeNoteModal()">&times;</button>
+      </div>
+      <form id="note-form" onsubmit="handleSaveNote(event)">
+        <div class="form-group">
+          <label>Title</label>
+          <input type="text" id="note-title" placeholder="e.g. Kundapura Site Materials, Customer Balance" required />
+        </div>
+        <div class="form-group">
+          <label>Category / Tag</label>
+          <select id="note-category">
+            <option value="General">📌 General</option>
+            <option value="Materials">📦 Materials / Purchase</option>
+            <option value="Site Work">⚡ Site Work</option>
+            <option value="Customer">💵 Customer Payment</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Details</label>
+          <textarea id="note-body" rows="4" placeholder="Write down the details here..." style="width: 100%; padding: 10px 14px; border-radius: var(--radius-sm); border: 1.5px solid var(--border); font-size: 0.95rem; outline: none; font-family: inherit; resize: vertical;" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Save Note</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- PRINTABLE WEEKLY SLIP MODAL -->
+  <div id="slip-modal" class="modal hidden">
+    <div class="modal-content printable-slip">
+      <div class="no-print modal-header">
+        <h3>Payment Slip Preview</h3>
+        <button class="close-btn" onclick="closeSlipModal()">&times;</button>
+      </div>
+      <div id="slip-content"></div>
+      <div class="no-print row-actions" style="margin-top: 20px;">
+        <button class="btn btn-success" onclick="window.print()">🖨️ Print / Save PDF</button>
+        <button class="btn btn-secondary" onclick="closeSlipModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FLOATING QUICK CALCULATOR BUTTON -->
+  <button id="calc-floating-btn" onclick="toggleCalculator()" title="Open Quick Calculator">
+    🧮
+  </button>
+
+  <!-- CALCULATOR MODAL -->
+  <div id="calculator-modal" class="modal hidden">
+    <div class="modal-content calc-container">
+      <div class="modal-header">
+        <h3 style="color: #f8fafc;">⚡ Quick Calculator</h3>
+        <button class="close-btn" onclick="toggleCalculator()">&times;</button>
+      </div>
+      
+      <div class="calc-screen">
+        <div id="calc-history" class="calc-sub"></div>
+        <div id="calc-display" class="calc-main">0</div>
+      </div>
+
+      <div class="calc-grid">
+        <button class="calc-btn btn-action" onclick="calcClear()">C</button>
+        <button class="calc-btn btn-action" onclick="calcBackspace()">⌫</button>
+        <button class="calc-btn btn-op" onclick="calcOp('%')">%</button>
+        <button class="calc-btn btn-op" onclick="calcOp('/')">÷</button>
+
+        <button class="calc-btn" onclick="calcNum('7')">7</button>
+        <button class="calc-btn" onclick="calcNum('8')">8</button>
+        <button class="calc-btn" onclick="calcNum('9')">9</button>
+        <button class="calc-btn btn-op" onclick="calcOp('*')">×</button>
+
+        <button class="calc-btn" onclick="calcNum('4')">4</button>
+        <button class="calc-btn" onclick="calcNum('5')">5</button>
+        <button class="calc-btn" onclick="calcNum('6')">6</button>
+        <button class="calc-btn btn-op" onclick="calcOp('-')">−</button>
+
+        <button class="calc-btn" onclick="calcNum('1')">1</button>
+        <button class="calc-btn" onclick="calcNum('2')">2</button>
+        <button class="calc-btn" onclick="calcNum('3')">3</button>
+        <button class="calc-btn btn-op" onclick="calcOp('+')">+</button>
+
+        <button class="calc-btn" onclick="calcNum('0')">0</button>
+        <button class="calc-btn" onclick="calcNum('00')">00</button>
+        <button class="calc-btn" onclick="calcNum('.')">.</button>
+        <button class="calc-btn btn-equal" onclick="calcEquals()">=</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
