@@ -27,6 +27,7 @@
     </div>
 
     <div class="header-controls">
+      <button id="btn-install-header" class="btn btn-warning" onclick="triggerPWAInstall()" style="padding: 8px 12px; font-size: 0.85rem; font-weight: 700;" title="Install on Phone">📲 Install App</button>
       <select id="business-filter" onchange="switchBusiness(this.value)">
         <!-- Populated via JS -->
       </select>
@@ -38,6 +39,29 @@
       <button class="btn btn-primary" onclick="showSection('attendance')">⚡ Take Attendance</button>
     </div>
   </header>
+
+  <!-- In-App Browser (WhatsApp/FB) Alert Banner -->
+  <div id="webview-alert-banner" class="webview-alert hidden">
+    <div>
+      ⚠️ <strong>Opened inside WhatsApp:</strong> Tap the <strong>3 dots (⋮)</strong> at the very top-right and choose <strong>"Open in Chrome"</strong> to install to your phone!
+    </div>
+    <button class="btn-icon-close" onclick="document.getElementById('webview-alert-banner').classList.add('hidden')" style="color:#92400e;">✕</button>
+  </div>
+
+  <!-- PWA Install Banner -->
+  <div id="pwa-install-banner" class="install-banner hidden">
+    <div class="banner-info">
+      <span class="banner-icon">⚡</span>
+      <div>
+        <strong>Install Lobo Electricals App</strong>
+        <p>Save to phone home screen for instant 100% offline access at work sites.</p>
+      </div>
+    </div>
+    <div class="banner-buttons">
+      <button class="btn btn-warning" onclick="triggerPWAInstall()">📲 Install App</button>
+      <button class="btn-icon-close" onclick="dismissInstallBanner()" title="Close">✕</button>
+    </div>
+  </div>
 
   <div class="app-layout">
     <!-- Sidebar Navigation -->
@@ -82,6 +106,7 @@
         <div class="panel">
           <h2>Quick Actions</h2>
           <div class="action-grid">
+            <button class="big-btn highlight-btn" id="btn-dash-install" onclick="triggerPWAInstall()">📲 Install App to Phone</button>
             <button class="big-btn" onclick="showSection('attendance')">📅 Mark Today's Attendance</button>
             <button class="big-btn" onclick="openAddWorkerModal()">➕ Add New Worker</button>
             <button class="big-btn" onclick="showSection('payroll')">💰 Weekly Pay & Settlements</button>
@@ -322,6 +347,98 @@
         <button class="calc-btn" onclick="calcNum('00')">00</button>
         <button class="calc-btn" onclick="calcNum('.')">.</button>
         <button class="calc-btn btn-equal" onclick="calcEquals()">=</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- INSTALL GUIDE MODAL -->
+  <div id="install-help-modal" class="modal hidden">
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3>📲 Install to Phone Home Screen</h3>
+        <button class="close-btn" onclick="closeInstallModal()">&times;</button>
+      </div>
+
+      <div class="device-tab-bar">
+        <button class="device-tab-btn active" id="tab-btn-android" onclick="switchInstallTab('android')">🤖 Android (Chrome)</button>
+        <button class="device-tab-btn" id="tab-btn-ios" onclick="switchInstallTab('ios')">🍎 iPhone (Safari)</button>
+        <button class="device-tab-btn" id="tab-btn-whatsapp" onclick="switchInstallTab('whatsapp')">💬 From WhatsApp</button>
+      </div>
+
+      <!-- Tab 1: Android -->
+      <div id="tab-content-android" class="install-guide-box">
+        <p style="font-weight: 700; color: #1e3a8a; margin-bottom: 8px;">Google Chrome on Android:</p>
+        <ul class="install-step-list">
+          <li>
+            <span class="step-badge">1</span>
+            <span>Make sure you are in <strong>Google Chrome</strong> browser.</span>
+          </li>
+          <li>
+            <span class="step-badge">2</span>
+            <span>Tap the <strong>three dots (⋮)</strong> in the top-right corner of Chrome.</span>
+          </li>
+          <li>
+            <span class="step-badge">3</span>
+            <span>Look for and tap <strong>"Install app"</strong> or <strong>"Add to Home screen"</strong>.</span>
+          </li>
+          <li>
+            <span class="step-badge">4</span>
+            <span>Tap <strong>Install</strong>. The ⚡ Lobo Electricals icon will appear on your phone's home screen!</span>
+          </li>
+        </ul>
+        <p style="font-size: 0.8rem; color: #64748b; margin-top: 10px;">
+          <em>Samsung Internet users: Tap <strong>☰ (Menu)</strong> at bottom-right &gt; "Add page to" &gt; "Home screen".</em>
+        </p>
+      </div>
+
+      <!-- Tab 2: iPhone / Safari -->
+      <div id="tab-content-ios" class="install-guide-box hidden">
+        <p style="font-weight: 700; color: #1e3a8a; margin-bottom: 8px;">Apple Safari on iPhone:</p>
+        <ul class="install-step-list">
+          <li>
+            <span class="step-badge">1</span>
+            <span>Open this link in <strong>Safari</strong> browser.</span>
+          </li>
+          <li>
+            <span class="step-badge">2</span>
+            <span>Tap the <strong>Share button</strong> (square with arrow pointing up <span style="font-size:1.1rem">⎋</span>) at the bottom toolbar.</span>
+          </li>
+          <li>
+            <span class="step-badge">3</span>
+            <span>Scroll down and tap <strong>"Add to Home Screen"</strong> (➕).</span>
+          </li>
+          <li>
+            <span class="step-badge">4</span>
+            <span>Tap <strong>Add</strong> in the top-right corner. Done!</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Tab 3: WhatsApp In-App Browser -->
+      <div id="tab-content-whatsapp" class="install-guide-box hidden" style="background: #fffbeb; border-color: #fde68a;">
+        <p style="font-weight: 700; color: #b45309; margin-bottom: 8px;">⚠️ If you tapped the link inside WhatsApp:</p>
+        <ul class="install-step-list">
+          <li>
+            <span class="step-badge" style="background:#b45309;">1</span>
+            <span>WhatsApp opens links in a temporary browser that blocks app installations.</span>
+          </li>
+          <li>
+            <span class="step-badge" style="background:#b45309;">2</span>
+            <span>Look at the <strong>very top-right corner</strong> of this screen for <strong>3 dots (⋮)</strong>.</span>
+          </li>
+          <li>
+            <span class="step-badge" style="background:#b45309;">3</span>
+            <span>Tap the 3 dots, then tap <strong>"Open in Chrome"</strong> (or "Open in Safari" / "Open in browser").</span>
+          </li>
+          <li>
+            <span class="step-badge" style="background:#b45309;">4</span>
+            <span>Once in Chrome, tap <strong>"📲 Install App"</strong>!</span>
+          </li>
+        </ul>
+      </div>
+
+      <div class="row-actions" style="margin-top: 16px; justify-content: flex-end;">
+        <button class="btn btn-primary" onclick="closeInstallModal()">Got it!</button>
       </div>
     </div>
   </div>

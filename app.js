@@ -765,4 +765,126 @@ window.onload = function() {
       .then((reg) => console.log("Worker Manager Service Worker Registered! Scope:", reg.scope))
       .catch((err) => console.warn("Service Worker registration failed:", err));
   }
+
+  // Check In-App Browser & Initial PWA UI state
+  checkInAppBrowser();
+  updateInstallUI();
 };
+
+// 12. PWA Installation & Offline Standalone Management
+let deferredInstallPrompt = null;
+
+window.addEventListener("beforeinstallprompt", (e) => {
+  // Prevent mini-infobar on mobile Chrome
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  console.log("PWA beforeinstallprompt captured!");
+  updateInstallUI();
+});
+
+window.addEventListener("appinstalled", () => {
+  console.log("Worker Manager PWA was successfully installed!");
+  deferredInstallPrompt = null;
+  updateInstallUI();
+});
+
+function isRunningStandalone() {
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.navigator.standalone === true ||
+    document.referrer.includes("android-app://")
+  );
+}
+
+function updateInstallUI() {
+  const isStandalone = isRunningStandalone();
+  const banner = document.getElementById("pwa-install-banner");
+  const headerBtn = document.getElementById("btn-install-header");
+  const dashBtn = document.getElementById("btn-dash-install");
+
+  if (isStandalone) {
+    if (banner) banner.classList.add("hidden");
+    if (headerBtn) headerBtn.classList.add("hidden");
+    if (dashBtn) {
+      dashBtn.innerText = "✅ App Installed on Device";
+      dashBtn.disabled = true;
+      dashBtn.style.opacity = "0.75";
+      dashBtn.style.cursor = "default";
+      dashBtn.onclick = null;
+    }
+  } else {
+    if (headerBtn) headerBtn.classList.remove("hidden");
+    if (banner && !sessionStorage.getItem("pwa_banner_dismissed")) {
+      banner.classList.remove("hidden");
+    }
+  }
+}
+
+function dismissInstallBanner() {
+  const banner = document.getElementById("pwa-install-banner");
+  if (banner) banner.classList.add("hidden");
+  sessionStorage.setItem("pwa_banner_dismissed", "true");
+}
+
+function checkInAppBrowser() {
+  if (isRunningStandalone()) return;
+  const ua = (navigator.userAgent || navigator.vendor || window.opera || "").toLowerCase();
+  const isWhatsApp = ua.includes("whatsapp");
+  const isFB = ua.includes("fban") || ua.includes("fbav") || ua.includes("instagram");
+  const isLine = ua.includes("line");
+
+  if (isWhatsApp || isFB || isLine) {
+    const alertBanner = document.getElementById("webview-alert-banner");
+    if (alertBanner) alertBanner.classList.remove("hidden");
+  }
+}
+
+function triggerPWAInstall() {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.then((choiceResult) => {
+      if (choiceResult.outcome === "accepted") {
+        console.log("User accepted PWA installation");
+      }
+      deferredInstallPrompt = null;
+    });
+  } else {
+    // Show user-friendly guide modal
+    openInstallModal();
+  }
+}
+
+function openInstallModal() {
+  const modal = document.getElementById("install-help-modal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+
+  // Auto-detect browser/platform to show the most relevant tab
+  const ua = (navigator.userAgent || "").toLowerCase();
+  if (ua.includes("whatsapp") || ua.includes("fban") || ua.includes("fbav")) {
+    switchInstallTab("whatsapp");
+  } else if (/iphone|ipad|ipod/.test(ua)) {
+    switchInstallTab("ios");
+  } else {
+    switchInstallTab("android");
+  }
+}
+
+function closeInstallModal() {
+  const modal = document.getElementById("install-help-modal");
+  if (modal) modal.classList.add("hidden");
+}
+
+function switchInstallTab(tab) {
+  ["android", "ios", "whatsapp"].forEach((t) => {
+    const btn = document.getElementById(`tab-btn-${t}`);
+    const content = document.getElementById(`tab-content-${t}`);
+    if (btn) btn.classList.remove("active");
+    if (content) content.classList.add("hidden");
+  });
+
+  const activeBtn = document.getElementById(`tab-btn-${tab}`);
+  const activeContent = document.getElementById(`tab-content-${tab}`);
+  if (activeBtn) activeBtn.classList.add("active");
+  if (activeContent) activeContent.classList.remove("hidden");
+}
