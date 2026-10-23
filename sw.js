@@ -1,4 +1,4 @@
-const CACHE_NAME = "worker-mgr-v7";
+const CACHE_NAME = "worker-mgr-v8";
 const ASSETS_TO_CACHE = [
   "./",
   "./index.html",
